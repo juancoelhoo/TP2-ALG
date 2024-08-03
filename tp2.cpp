@@ -1,179 +1,208 @@
-#include <iostream>
-#include <vector>
-#include <queue>
-#include <tuple>
-#include <algorithm>
+#include <cstdio>
 #include <climits>
-#include <numeric>
-#include <functional>
+#include <cfloat>
+#include <list>
+#include <vector>
+#include <algorithm>
 
-using namespace std;
-
-struct Edge {
-    int u, v, year, length, cost;
+class Caminho{
+    public:
+        Caminho(double n, double a, double t, double c) : NumeroDaVila(n), Ano(a), Tempo(t), Custo(c){};
+        double NumeroDaVila;
+        double Ano;
+        double Tempo;
+        double Custo;
+        double VilaOrigem;
 };
 
-// Union-Find data structure
-struct UnionFind {
-    vector<int> parent, rank;
+class ConjuntosDisjuntos { 
 
-    UnionFind(int size) : parent(size), rank(size, 0) {
-        iota(parent.begin(), parent.end(), 0);
-    }
+    private:
+        int* parent; 
+        double* rank;
 
-    int find(int x) {
-        if (parent[x] != x) {
-            parent[x] = find(parent[x]);  // Path compression
+    public: 
+        ConjuntosDisjuntos(int n) { 
+            parent = new int[n]; 
+            rank = new double[n]; 
+    
+            for (int i = 0; i < n; i++) { 
+                parent[i] = -1; 
+                rank[i] = 1; 
+            } 
         }
-        return parent[x];
-    }
 
-    void unite(int x, int y) {
-        int rootX = find(x);
-        int rootY = find(y);
-        if (rootX != rootY) {
-            if (rank[rootX] > rank[rootY]) {
-                parent[rootY] = rootX;
-            } else if (rank[rootX] < rank[rootY]) {
-                parent[rootX] = rootY;
-            } else {
-                parent[rootY] = rootX;
-                rank[rootX]++;
-            }
+        ~ConjuntosDisjuntos(){
+            delete[] parent;
+            delete[] rank;
         }
-    }
+  
+        int find(int i) { 
+            if (parent[i] == -1) 
+                return i; 
+    
+            return parent[i] = find(parent[i]); 
+        }
 
-    bool connected(int x, int y) {
-        return find(x) == find(y);
-    }
+        void unite(int x, int y) { 
+            int s1 = find(x); 
+            int s2 = find(y); 
+  
+            if (s1 != s2) { 
+                if (rank[s1] < rank[s2]) { 
+                    parent[s1] = s2; 
+                } 
+                else if (rank[s1] > rank[s2]) { 
+                    parent[s2] = s1; 
+                } 
+                else { 
+                    parent[s2] = s1; 
+                    rank[s1] += 1; 
+                } 
+            } 
+        } 
 };
 
-void processEdgesUntilYear(const vector<Edge>& edges, int N, int year, UnionFind& uf) {
-    for (const Edge& edge : edges) {
-        if (edge.year <= year) {
-            uf.unite(edge.u, edge.v);
-        }
+int Minimo(double vetor[], bool vilas[], int numVilas) {
+    double min = DBL_MAX;
+    int vila = 0;
+ 
+    for (std::size_t v = 0; v < numVilas; v++){
+        if (vilas[v] == false && vetor[v] <= min)
+            min = vetor[v], vila = v;
     }
+    return vila;
 }
 
-int findFirstYearAllDistancesRealizable(const vector<Edge>& edges, int N) {
-    UnionFind uf(N);
-    int largestYear = -1;
+bool ComparaCusto (Caminho i, Caminho j) { return (i.Custo < j.Custo); }
 
-    for (const Edge& edge : edges) {
-        uf.unite(edge.u, edge.v);
+bool ComparaAno (Caminho i, Caminho j) { return (i.Ano < j.Ano); }
 
-        bool allConnected = true;
-        int root = uf.find(0);
-        for (int i = 1; i < N; i++) {
-            if (uf.find(i) != root) {
-                allConnected = false;
-                break;
-            }
-        }
+int main(){
+    int NumeroDeVilas = 0, NumeroDeConexoes = 0;
 
-        if (allConnected) {
-            largestYear = edge.year;
-        }
+    if(scanf("%d", &NumeroDeVilas)){};
+    if(scanf("%d", &NumeroDeConexoes)){};
+
+    std::list<Caminho> lista;
+    std::vector<std::list<Caminho>> Baiconia(NumeroDeVilas, lista);
+    std::vector<Caminho> Arestas;
+
+    double vila1 = 0;
+    double vila2 = 0;
+    double ano = 0;
+    double tempo = 0;
+    double custo = 0;
+    Caminho caminho_aux(vila2, ano, tempo, custo);
+
+    for(std::size_t i=0; i<NumeroDeConexoes; i++){
+        if(scanf("%lf", &vila1)){};
+        caminho_aux.VilaOrigem = vila1;
+        if(scanf("%lf", &vila2)){};
+        caminho_aux.NumeroDaVila = vila2;
+        if(scanf("%lf", &ano)){};
+        caminho_aux.Ano = ano;
+        if(scanf("%lf", &tempo)){};
+        caminho_aux.Tempo = tempo;
+        if(scanf("%lf", &custo)){};
+        caminho_aux.Custo = custo;
+        
+        Baiconia[vila1-1].emplace_back(caminho_aux);
+        Arestas.push_back(caminho_aux);
+
+        caminho_aux.NumeroDaVila = vila1;
+        Baiconia[vila2-1].emplace_back(caminho_aux);
     }
 
-    return largestYear;
-}
+    //-- Obter Menor Tempo --//
 
-int main() {
-    int N, M;
-    cin >> N >> M;
+    double vetorMin[NumeroDeVilas];
+    bool vilas[NumeroDeVilas];
+    int vetorPai[NumeroDeVilas];
 
-    vector<Edge> edges(M);
-    for (int i = 0; i < M; i++) {
-        cin >> edges[i].u >> edges[i].v >> edges[i].year >> edges[i].length >> edges[i].cost;
-        edges[i].u--; // Adjusting to 0-based index
-        edges[i].v--; // Adjusting to 0-based index
+    for (std::size_t i = 0; i < NumeroDeVilas; i++){
+        vetorMin[i] = DBL_MAX;
+        vilas[i] = false;
+        vetorPai[i] = -1;
     }
 
-    // Sort edges by year of completion
-    sort(edges.begin(), edges.end(), [](const Edge& a, const Edge& b) {
-        return a.year < b.year;
-    });
+    vetorMin[0] = 0;
 
-    vector<vector<pair<int, int>>> graph(N);
+    for (std::size_t k = 0; k < NumeroDeVilas - 1; k++) {
 
-    // Question 1: Minimum distances after all projects are complete
-    for (const Edge& edge : edges) {
-        graph[edge.u].emplace_back(edge.v, edge.length);
-        graph[edge.v].emplace_back(edge.u, edge.length);
-    }
-
-    // Perform Dijkstra's algorithm for Question 1
-    vector<int> dist(N, INT_MAX);
-    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
-    pq.push(make_pair(0, 0));
-    dist[0] = 0;
-
-    while (!pq.empty()) {
-        pair<int, int> top = pq.top();
-        pq.pop();
-        int currentDist = top.first;
-        int u = top.second;
-
-        if (currentDist > dist[u]) continue;
-
-        for (const auto& neighbor : graph[u]) {
-            int v = neighbor.first;
-            int length = neighbor.second;
-            if (dist[u] + length < dist[v]) {
-                dist[v] = dist[u] + length;
-                pq.push(make_pair(dist[v], v));
+        int menor = Minimo(vetorMin, vilas, NumeroDeVilas);
+        vilas[menor] = true;
+ 
+        for (std::list<Caminho>::iterator it=Baiconia[menor].begin(); it != Baiconia[menor].end(); ++it){
+            int num = it->NumeroDaVila - 1;
+            if (!vilas[num] && vetorMin[menor] + it->Tempo < vetorMin[num]){
+                vetorMin[num] = vetorMin[menor] + it->Tempo;
+                vetorPai[num] = menor;
             }
         }
     }
 
-    for (int i = 0; i < N; i++) {
-        cout << dist[i] << endl;
+    for(std::size_t p=0; p<NumeroDeVilas; p++){
+        printf("%.0lf\n", vetorMin[p]);
     }
 
-    // Question 2: First year when all distances are mutually realizable
-    int firstYearAllDistancesRealizable = findFirstYearAllDistancesRealizable(edges, N);
-    cout << firstYearAllDistancesRealizable << endl;
+    //-- Obter o primeiro ano do caminho com menor tempo
 
-    // Question 3: First year when the entire kingdom is reachable from the palace
-    int firstYearKingdomReachable = -1;
-    UnionFind ufForReachability(N);
-    for (const Edge& edge : edges) {
-        ufForReachability.unite(edge.u, edge.v);
-
-        bool allConnected = true;
-        int root = ufForReachability.find(0);  // Find the root of the palace
-        for (int i = 1; i < N; i++) {
-            if (ufForReachability.find(i) != root) {
-                allConnected = false;
-                break;
+    double menorAno = 0;
+    for(std::size_t b=0; b < NumeroDeVilas; b++){
+        
+        if(vetorPai[b] == -1)
+            continue;
+        for (std::list<Caminho>::iterator it=Baiconia[b].begin(); it != Baiconia[b].end(); ++it){
+            if(it->NumeroDaVila == vetorPai[b] + 1){
+                if(menorAno < it->Ano)
+                    menorAno = it->Ano;
             }
         }
+    }
 
-        if (allConnected) {
-            firstYearKingdomReachable = edge.year;
-            break;
+    printf("%.0lf\n", menorAno);
+
+    //-- Obter menor ano pra conectar o palacio real a qualquer outra vila
+
+    std::sort (Arestas.begin(), Arestas.end(), ComparaAno);
+
+    ConjuntosDisjuntos conjunto(NumeroDeVilas);
+    menorAno = 0;
+
+    for (auto aresta : Arestas) {
+        int x = aresta.VilaOrigem - 1;
+        int y = aresta.NumeroDaVila - 1;
+        double w = aresta.Ano;
+
+        if (conjunto.find(x) != conjunto.find(y)) {
+            conjunto.unite(x, y); 
+            if(menorAno < w)
+                menorAno = w;
+        }
+    }
+    
+    printf("%.0lf\n", menorAno);
+
+    //-- Obter menor custo possível --//
+
+    std::sort (Arestas.begin(), Arestas.end(), ComparaCusto);
+
+    ConjuntosDisjuntos conjunto2(NumeroDeVilas);
+    double menorCusto = 0;
+
+    for (auto aresta : Arestas) {
+        int x = aresta.VilaOrigem - 1;
+        int y = aresta.NumeroDaVila - 1;
+        double w = aresta.Custo;
+
+        if (conjunto2.find(x) != conjunto2.find(y)) {
+            conjunto2.unite(x, y); 
+            menorCusto += w;
         }
     }
 
-    cout << firstYearKingdomReachable << endl;
-
-    // Question 4: Minimum cost to connect all villages
-    sort(edges.begin(), edges.end(), [](const Edge& a, const Edge& b) {
-        return a.cost < b.cost;
-    });
-
-    UnionFind ufForCost(N);
-    int minCost = 0;
-    for (const Edge& edge : edges) {
-        if (!ufForCost.connected(edge.u, edge.v)) {
-            ufForCost.unite(edge.u, edge.v);
-            minCost += edge.cost;
-        }
-    }
-
-    cout << minCost << endl;
+    printf("%.0lf", menorCusto);
 
     return 0;
 }
