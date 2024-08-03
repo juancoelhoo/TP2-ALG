@@ -4,8 +4,8 @@
 #include <tuple>
 #include <algorithm>
 #include <climits>
-#include <numeric>
-#include <functional>
+#include <numeric>  // Para std::iota
+#include <functional>  // Para std::function
 
 using namespace std;
 
@@ -41,6 +41,38 @@ void dijkstra(int start, const vector<vector<pair<int, int>>>& graph, vector<int
     }
 }
 
+int findFirstYearAllDistancesRealizable(const vector<Edge>& edges, int N) {
+    vector<vector<pair<int, int>>> graph(N);
+    vector<int> dist(N, INT_MAX);
+
+    int firstYearAllDistancesRealizable = -1;
+    for (const Edge& edge : edges) {
+        graph[edge.u].emplace_back(edge.v, edge.length);
+        graph[edge.v].emplace_back(edge.u, edge.length);
+
+        bool allRealizable = true;
+        for (int start = 0; start < N; start++) {
+            fill(dist.begin(), dist.end(), INT_MAX);
+            dijkstra(start, graph, dist);
+            for (int i = 0; i < N; i++) {
+                if (dist[i] == INT_MAX) {
+                    allRealizable = false;
+                    break;
+                }
+            }
+            if (!allRealizable) {
+                break;
+            }
+        }
+
+        if (allRealizable) {
+            firstYearAllDistancesRealizable = edge.year;
+        }
+    }
+
+    return firstYearAllDistancesRealizable;
+}
+
 int main() {
     int N, M;
     cin >> N >> M;
@@ -73,34 +105,7 @@ int main() {
     }
 
     // Question 2: First year when all distances are mutually realizable
-    int firstYearAllDistancesRealizable = -1;
-    for (int year = 1; year <= 1e8; year++) {
-        fill(dist.begin(), dist.end(), INT_MAX);
-        graph.assign(N, {});
-
-        for (const Edge& edge : edges) {
-            if (edge.year <= year) {
-                graph[edge.u].emplace_back(edge.v, edge.length);
-                graph[edge.v].emplace_back(edge.u, edge.length);
-            }
-        }
-
-        dijkstra(0, graph, dist);
-
-        bool allRealizable = true;
-        for (int i = 0; i < N; i++) {
-            if (dist[i] == INT_MAX) {
-                allRealizable = false;
-                break;
-            }
-        }
-
-        if (allRealizable) {
-            firstYearAllDistancesRealizable = year;
-            break;
-        }
-    }
-
+    int firstYearAllDistancesRealizable = findFirstYearAllDistancesRealizable(edges, N);
     cout << firstYearAllDistancesRealizable << endl;
 
     // Question 3: First year when entire kingdom is reachable from the palace
