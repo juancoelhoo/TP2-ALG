@@ -5,24 +5,25 @@
 #include <vector>
 #include <algorithm>
 
-class Caminho{
+class Path {
     public:
-        Caminho(double n, double a, double t, double c) : NumeroDaVila(n), Ano(a), Tempo(t), Custo(c){};
-        double NumeroDaVila;
-        double Ano;
-        double Tempo;
-        double Custo;
-        double VilaOrigem;
+        Path(double origin, double destination, double year, double time, double cost) 
+            : Origin(origin), Destination(destination), Year(year), Time(time), Cost(cost) {};
+        double Origin;
+        double Destination;
+        double Year;
+        double Time;
+        double Cost;
 };
 
-class ConjuntosDisjuntos { 
+class DisjointSets { 
 
     private:
         int* parent; 
         double* rank;
 
     public: 
-        ConjuntosDisjuntos(int n) { 
+        DisjointSets(int n) { 
             parent = new int[n]; 
             rank = new double[n]; 
     
@@ -32,7 +33,7 @@ class ConjuntosDisjuntos {
             } 
         }
 
-        ~ConjuntosDisjuntos(){
+        ~DisjointSets(){
             delete[] parent;
             delete[] rank;
         }
@@ -45,164 +46,164 @@ class ConjuntosDisjuntos {
         }
 
         void unite(int x, int y) { 
-            int s1 = find(x); 
-            int s2 = find(y); 
+            int rootX = find(x); 
+            int rootY = find(y); 
   
-            if (s1 != s2) { 
-                if (rank[s1] < rank[s2]) { 
-                    parent[s1] = s2; 
+            if (rootX != rootY) { 
+                if (rank[rootX] < rank[rootY]) { 
+                    parent[rootX] = rootY; 
                 } 
-                else if (rank[s1] > rank[s2]) { 
-                    parent[s2] = s1; 
+                else if (rank[rootX] > rank[rootY]) { 
+                    parent[rootY] = rootX; 
                 } 
                 else { 
-                    parent[s2] = s1; 
-                    rank[s1] += 1; 
+                    parent[rootY] = rootX; 
+                    rank[rootX] += 1; 
                 } 
             } 
         } 
 };
 
-int Minimo(double vetor[], bool vilas[], int numVilas) {
+int findMin(double distances[], bool visited[], int numNodes) {
     double min = DBL_MAX;
-    int vila = 0;
+    int node = 0;
  
-    for (std::size_t v = 0; v < numVilas; v++){
-        if (vilas[v] == false && vetor[v] <= min)
-            min = vetor[v], vila = v;
+    for (std::size_t i = 0; i < numNodes; i++){
+        if (!visited[i] && distances[i] <= min)
+            min = distances[i], node = i;
     }
-    return vila;
+    return node;
 }
 
-bool ComparaCusto (Caminho i, Caminho j) { return (i.Custo < j.Custo); }
+bool compareCost(Path i, Path j) { return (i.Cost < j.Cost); }
 
-bool ComparaAno (Caminho i, Caminho j) { return (i.Ano < j.Ano); }
+bool compareYear(Path i, Path j) { return (i.Year < j.Year); }
 
 int main(){
-    int NumeroDeVilas = 0, NumeroDeConexoes = 0;
+    int numVillages = 0, numConnections = 0;
 
-    if(scanf("%d", &NumeroDeVilas)){};
-    if(scanf("%d", &NumeroDeConexoes)){};
+    if(scanf("%d", &numVillages)){};
+    if(scanf("%d", &numConnections)){};
 
-    std::list<Caminho> lista;
-    std::vector<std::list<Caminho>> Baiconia(NumeroDeVilas, lista);
-    std::vector<Caminho> Arestas;
+    std::list<Path> adjacencyList;
+    std::vector<std::list<Path>> graph(numVillages, adjacencyList);
+    std::vector<Path> edges;
 
-    double vila1 = 0;
-    double vila2 = 0;
-    double ano = 0;
-    double tempo = 0;
-    double custo = 0;
-    Caminho caminho_aux(vila2, ano, tempo, custo);
+    double origin = 0;
+    double destination = 0;
+    double year = 0;
+    double time = 0;
+    double cost = 0;
+    Path pathAux(origin, destination, year, time, cost);
 
-    for(std::size_t i=0; i<NumeroDeConexoes; i++){
-        if(scanf("%lf", &vila1)){};
-        caminho_aux.VilaOrigem = vila1;
-        if(scanf("%lf", &vila2)){};
-        caminho_aux.NumeroDaVila = vila2;
-        if(scanf("%lf", &ano)){};
-        caminho_aux.Ano = ano;
-        if(scanf("%lf", &tempo)){};
-        caminho_aux.Tempo = tempo;
-        if(scanf("%lf", &custo)){};
-        caminho_aux.Custo = custo;
+    for(std::size_t i = 0; i < numConnections; i++){
+        if(scanf("%lf", &origin)){};
+        pathAux.Origin = origin;
+        if(scanf("%lf", &destination)){};
+        pathAux.Destination = destination;
+        if(scanf("%lf", &year)){};
+        pathAux.Year = year;
+        if(scanf("%lf", &time)){};
+        pathAux.Time = time;
+        if(scanf("%lf", &cost)){};
+        pathAux.Cost = cost;
         
-        Baiconia[vila1-1].emplace_back(caminho_aux);
-        Arestas.push_back(caminho_aux);
+        graph[origin-1].emplace_back(pathAux);
+        edges.push_back(pathAux);
 
-        caminho_aux.NumeroDaVila = vila1;
-        Baiconia[vila2-1].emplace_back(caminho_aux);
+        pathAux.Destination = origin;
+        graph[destination-1].emplace_back(pathAux);
     }
 
-    //-- Obter Menor Tempo --//
+    //-- Find Minimum Time --//
 
-    double vetorMin[NumeroDeVilas];
-    bool vilas[NumeroDeVilas];
-    int vetorPai[NumeroDeVilas];
+    double distances[numVillages];
+    bool visited[numVillages];
+    int parents[numVillages];
 
-    for (std::size_t i = 0; i < NumeroDeVilas; i++){
-        vetorMin[i] = DBL_MAX;
-        vilas[i] = false;
-        vetorPai[i] = -1;
+    for (std::size_t i = 0; i < numVillages; i++){
+        distances[i] = DBL_MAX;
+        visited[i] = false;
+        parents[i] = -1;
     }
 
-    vetorMin[0] = 0;
+    distances[0] = 0;
 
-    for (std::size_t k = 0; k < NumeroDeVilas - 1; k++) {
+    for (std::size_t k = 0; k < numVillages - 1; k++) {
 
-        int menor = Minimo(vetorMin, vilas, NumeroDeVilas);
-        vilas[menor] = true;
+        int minNode = findMin(distances, visited, numVillages);
+        visited[minNode] = true;
  
-        for (std::list<Caminho>::iterator it=Baiconia[menor].begin(); it != Baiconia[menor].end(); ++it){
-            int num = it->NumeroDaVila - 1;
-            if (!vilas[num] && vetorMin[menor] + it->Tempo < vetorMin[num]){
-                vetorMin[num] = vetorMin[menor] + it->Tempo;
-                vetorPai[num] = menor;
+        for (std::list<Path>::iterator it = graph[minNode].begin(); it != graph[minNode].end(); ++it){
+            int num = it->Destination - 1;
+            if (!visited[num] && distances[minNode] + it->Time < distances[num]){
+                distances[num] = distances[minNode] + it->Time;
+                parents[num] = minNode;
             }
         }
     }
 
-    for(std::size_t p=0; p<NumeroDeVilas; p++){
-        printf("%.0lf\n", vetorMin[p]);
+    for(std::size_t p = 0; p < numVillages; p++){
+        printf("%.0lf\n", distances[p]);
     }
 
-    //-- Obter o primeiro ano do caminho com menor tempo
+    //-- Find the earliest year on the shortest path --//
 
-    double menorAno = 0;
-    for(std::size_t b=0; b < NumeroDeVilas; b++){
+    double earliestYear = 0;
+    for(std::size_t b = 0; b < numVillages; b++){
         
-        if(vetorPai[b] == -1)
+        if(parents[b] == -1)
             continue;
-        for (std::list<Caminho>::iterator it=Baiconia[b].begin(); it != Baiconia[b].end(); ++it){
-            if(it->NumeroDaVila == vetorPai[b] + 1){
-                if(menorAno < it->Ano)
-                    menorAno = it->Ano;
+        for (std::list<Path>::iterator it = graph[b].begin(); it != graph[b].end(); ++it){
+            if(it->Destination == parents[b] + 1){
+                if(earliestYear < it->Year)
+                    earliestYear = it->Year;
             }
         }
     }
 
-    printf("%.0lf\n", menorAno);
+    printf("%.0lf\n", earliestYear);
 
-    //-- Obter menor ano pra conectar o palacio real a qualquer outra vila
+    //-- Find the smallest year to connect the royal palace to any other village --//
 
-    std::sort (Arestas.begin(), Arestas.end(), ComparaAno);
+    std::sort(edges.begin(), edges.end(), compareYear);
 
-    ConjuntosDisjuntos conjunto(NumeroDeVilas);
-    menorAno = 0;
+    DisjointSets disjointSets(numVillages);
+    earliestYear = 0;
 
-    for (auto aresta : Arestas) {
-        int x = aresta.VilaOrigem - 1;
-        int y = aresta.NumeroDaVila - 1;
-        double w = aresta.Ano;
+    for (auto edge : edges) {
+        int x = edge.Origin - 1;
+        int y = edge.Destination - 1;
+        double year = edge.Year;
 
-        if (conjunto.find(x) != conjunto.find(y)) {
-            conjunto.unite(x, y); 
-            if(menorAno < w)
-                menorAno = w;
+        if (disjointSets.find(x) != disjointSets.find(y)) {
+            disjointSets.unite(x, y); 
+            if(earliestYear < year)
+                earliestYear = year;
         }
     }
     
-    printf("%.0lf\n", menorAno);
+    printf("%.0lf\n", earliestYear);
 
-    //-- Obter menor custo possível --//
+    //-- Find the minimum possible cost --//
 
-    std::sort (Arestas.begin(), Arestas.end(), ComparaCusto);
+    std::sort(edges.begin(), edges.end(), compareCost);
 
-    ConjuntosDisjuntos conjunto2(NumeroDeVilas);
-    double menorCusto = 0;
+    DisjointSets disjointSets2(numVillages);
+    double minCost = 0;
 
-    for (auto aresta : Arestas) {
-        int x = aresta.VilaOrigem - 1;
-        int y = aresta.NumeroDaVila - 1;
-        double w = aresta.Custo;
+    for (auto edge : edges) {
+        int x = edge.Origin - 1;
+        int y = edge.Destination - 1;
+        double cost = edge.Cost;
 
-        if (conjunto2.find(x) != conjunto2.find(y)) {
-            conjunto2.unite(x, y); 
-            menorCusto += w;
+        if (disjointSets2.find(x) != disjointSets2.find(y)) {
+            disjointSets2.unite(x, y); 
+            minCost += cost;
         }
     }
 
-    printf("%.0lf", menorCusto);
+    printf("%.0lf", minCost);
 
     return 0;
 }
