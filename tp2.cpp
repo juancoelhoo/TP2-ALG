@@ -4,8 +4,8 @@
 #include <tuple>
 #include <algorithm>
 #include <climits>
-#include <numeric>  // Para std::iota
-#include <functional>  // Para std::function
+#include <numeric>
+#include <functional>
 
 using namespace std;
 
@@ -13,64 +13,71 @@ struct Edge {
     int u, v, year, length, cost;
 };
 
-struct Node {
-    int vertex, dist;
-    bool operator<(const Node& other) const {
-        return dist > other.dist;
+// Union-Find data structure
+struct UnionFind {
+    vector<int> parent, rank;
+
+    UnionFind(int size) : parent(size), rank(size, 0) {
+        iota(parent.begin(), parent.end(), 0);
+    }
+
+    int find(int x) {
+        if (parent[x] != x) {
+            parent[x] = find(parent[x]);  // Path compression
+        }
+        return parent[x];
+    }
+
+    void unite(int x, int y) {
+        int rootX = find(x);
+        int rootY = find(y);
+        if (rootX != rootY) {
+            if (rank[rootX] > rank[rootY]) {
+                parent[rootY] = rootX;
+            } else if (rank[rootX] < rank[rootY]) {
+                parent[rootX] = rootY;
+            } else {
+                parent[rootY] = rootX;
+                rank[rootX]++;
+            }
+        }
+    }
+
+    bool connected(int x, int y) {
+        return find(x) == find(y);
     }
 };
 
-void dijkstra(int start, const vector<vector<pair<int, int>>>& graph, vector<int>& dist) {
-    priority_queue<Node> pq;
-    pq.push({start, 0});
-    dist[start] = 0;
-
-    while (!pq.empty()) {
-        Node current = pq.top();
-        pq.pop();
-
-        for (auto& neighbor : graph[current.vertex]) {
-            int next = neighbor.first;
-            int weight = neighbor.second;
-
-            if (dist[current.vertex] + weight < dist[next]) {
-                dist[next] = dist[current.vertex] + weight;
-                pq.push({next, dist[next]});
-            }
+void processEdgesUntilYear(const vector<Edge>& edges, int N, int year, UnionFind& uf) {
+    for (const Edge& edge : edges) {
+        if (edge.year <= year) {
+            uf.unite(edge.u, edge.v);
         }
     }
 }
 
 int findFirstYearAllDistancesRealizable(const vector<Edge>& edges, int N) {
-    vector<vector<pair<int, int>>> graph(N);
-    vector<int> dist(N, INT_MAX);
+    UnionFind uf(N);
+    int largestYear = -1;
 
-    int firstYearAllDistancesRealizable = -1;
     for (const Edge& edge : edges) {
-        graph[edge.u].emplace_back(edge.v, edge.length);
-        graph[edge.v].emplace_back(edge.u, edge.length);
+        uf.unite(edge.u, edge.v);
 
-        bool allRealizable = true;
-        for (int start = 0; start < N; start++) {
-            fill(dist.begin(), dist.end(), INT_MAX);
-            dijkstra(start, graph, dist);
-            for (int i = 0; i < N; i++) {
-                if (dist[i] == INT_MAX) {
-                    allRealizable = false;
-                    break;
-                }
-            }
-            if (!allRealizable) {
+        bool allConnected = true;
+        int root = uf.find(0);
+        for (int i = 1; i < N; i++) {
+            if (uf.find(i) != root) {
+                allConnected = false;
                 break;
             }
         }
 
-        if (allRealizable) {
-            firstYearAllDistancesRealizable = edge.year;
+        if (allConnected) {
+            largestYear = edge.year;
         }
     }
 
-    return firstYearAllDistancesRealizable;
+    return largestYear;
 }
 
 int main() {
@@ -90,7 +97,6 @@ int main() {
     });
 
     vector<vector<pair<int, int>>> graph(N);
-    vector<int> dist(N, INT_MAX);
 
     // Question 1: Minimum distances after all projects are complete
     for (const Edge& edge : edges) {
@@ -98,7 +104,29 @@ int main() {
         graph[edge.v].emplace_back(edge.u, edge.length);
     }
 
-    dijkstra(0, graph, dist);
+    // Perform Dijkstra's algorithm for Question 1
+    vector<int> dist(N, INT_MAX);
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
+    pq.push(make_pair(0, 0));
+    dist[0] = 0;
+
+    while (!pq.empty()) {
+        pair<int, int> top = pq.top();
+        pq.pop();
+        int currentDist = top.first;
+        int u = top.second;
+
+        if (currentDist > dist[u]) continue;
+
+        for (const auto& neighbor : graph[u]) {
+            int v = neighbor.first;
+            int length = neighbor.second;
+            if (dist[u] + length < dist[v]) {
+                dist[v] = dist[u] + length;
+                pq.push(make_pair(dist[v], v));
+            }
+        }
+    }
 
     for (int i = 0; i < N; i++) {
         cout << dist[i] << endl;
@@ -108,31 +136,23 @@ int main() {
     int firstYearAllDistancesRealizable = findFirstYearAllDistancesRealizable(edges, N);
     cout << firstYearAllDistancesRealizable << endl;
 
-    // Question 3: First year when entire kingdom is reachable from the palace
+    // Question 3: First year when the entire kingdom is reachable from the palace
     int firstYearKingdomReachable = -1;
-    for (int year = 1; year <= 1e8; year++) {
-        fill(dist.begin(), dist.end(), INT_MAX);
-        graph.assign(N, {});
+    UnionFind ufForReachability(N);
+    for (const Edge& edge : edges) {
+        ufForReachability.unite(edge.u, edge.v);
 
-        for (const Edge& edge : edges) {
-            if (edge.year <= year) {
-                graph[edge.u].emplace_back(edge.v, edge.length);
-                graph[edge.v].emplace_back(edge.u, edge.length);
-            }
-        }
-
-        dijkstra(0, graph, dist);
-
-        bool allReachable = true;
+        bool allConnected = true;
+        int root = ufForReachability.find(0);  // Find the root of the palace
         for (int i = 1; i < N; i++) {
-            if (dist[i] == INT_MAX) {
-                allReachable = false;
+            if (ufForReachability.find(i) != root) {
+                allConnected = false;
                 break;
             }
         }
 
-        if (allReachable) {
-            firstYearKingdomReachable = year;
+        if (allConnected) {
+            firstYearKingdomReachable = edge.year;
             break;
         }
     }
@@ -144,21 +164,11 @@ int main() {
         return a.cost < b.cost;
     });
 
-    vector<int> parent(N);
-    iota(parent.begin(), parent.end(), 0);
-
-    function<int(int)> find = [&](int x) {
-        return parent[x] == x ? x : parent[x] = find(parent[x]);
-    };
-
-    auto unite = [&](int x, int y) {
-        parent[find(x)] = find(y);
-    };
-
+    UnionFind ufForCost(N);
     int minCost = 0;
     for (const Edge& edge : edges) {
-        if (find(edge.u) != find(edge.v)) {
-            unite(edge.u, edge.v);
+        if (!ufForCost.connected(edge.u, edge.v)) {
+            ufForCost.unite(edge.u, edge.v);
             minCost += edge.cost;
         }
     }
